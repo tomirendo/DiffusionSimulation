@@ -1,8 +1,8 @@
 {   
     "number_of_molecules": 500, 
     "total_time_in_seconds": 10, 
-    "number_of_frames": 2000, 
-    "number_of_subframes_per_frame" : 5,
+    "number_of_frames": 100, 
+    "number_of_subframes_per_frame" : 2,
 
 
     "pixel_length_in_um": 0.117, 

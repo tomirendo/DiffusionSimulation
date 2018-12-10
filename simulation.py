@@ -39,6 +39,7 @@ class Simulation:
         
         self.number_of_steps = self.number_of_frames * self.number_of_subframes_per_frame
         self.step_time_in_seconds = self.total_time_in_seconds / self.number_of_steps 
+        self.frame_time_in_seconds = self.total_time_in_seconds / self.number_of_frames
         
         self.molecules = [Molecule(self.screen_size, 
                                    self.pixel_length_in_um,
@@ -101,7 +102,7 @@ class Simulation:
             return im,
 
         ani = FuncAnimation(fig, updatefig,
-                                interval=self.step_time_in_seconds*1e3, 
+                                interval=self.frame_time_in_seconds*1e3, 
                                 frames = tqdm(range(1,self.number_of_frames)),
                                 blit=True)
 
