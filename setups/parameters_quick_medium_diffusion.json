@@ -1,5 +1,5 @@
 {   
-    "number_of_molecules": 5000, 
+    "number_of_molecules": 500, 
     "total_time_in_seconds": 1, 
     "number_of_frames": 1000, 
     "number_of_subframes_per_frame" : 1,

@@ -13,5 +13,7 @@
     "screen_size_in_pixels_y": 500,
 
     "sigma_x_noise_in_um" : 0.04,
-    "sigma_y_noise_in_um" : 0.04
+    "sigma_y_noise_in_um" : 0.04,
+    "background_noise_sigma" : 0.3
+
 }

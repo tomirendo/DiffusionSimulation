@@ -37,13 +37,15 @@ class TwoSpeciesSimulation:
     def approxiamte_diffusion_coefficients(self, journey_length = 4,
                                             bins = 200,
                                             p0 = None):
+        number_of_steps = journey_length - 1    
         if p0 is None:
             p0 = [5,5,.5]
 
         #at the moment, assumes 2 particle types
         molecules_by_simulation = self.get_molecules_with_journey_length(n = journey_length)
-        displacements = [[_get_mean_square_displacement(molecule, journey_length-1) 
+        displacements = [[_get_mean_square_displacement(molecule, number_of_steps) 
                                 for molecule in _sim]  for _sim in molecules_by_simulation]
+
 
         histogram = np.histogram(list(chain.from_iterable(displacements)), 
                                 bins)
@@ -54,8 +56,8 @@ class TwoSpeciesSimulation:
         def distribution(X, D1, D2, ratio):
             DSTAR1 = 2 * self.step_time_in_seconds * D1
             DSTAR2 = 2 * self.step_time_in_seconds * D2
-            return ratio/(1+ratio)*(number_of_tracks*delta)*1/(8*DSTAR1**3) * (X**(2)/2 * np.exp(-X/(2*DSTAR1))) + \
-                       1/(ratio+1)*(number_of_tracks*delta)*1/(8*DSTAR2**3) * (X**(2)/2 * np.exp(-X/(2*DSTAR2))) 
+            return ratio/(1+ratio)*(number_of_tracks*delta)*1/(DSTAR1**number_of_steps) * (1/(np.math.factorial(number_of_steps-1) * 2**number_of_steps)) * (X**(number_of_steps-1) * np.exp(-X/(2*DSTAR1))) + \
+                       1/(ratio+1)*(number_of_tracks*delta)*1/(DSTAR2**number_of_steps) * (1/(np.math.factorial(number_of_steps-1) * 2**number_of_steps)) * (X**(number_of_steps-1) * np.exp(-X/(2*DSTAR2))) 
 
         args, errors = optimize.curve_fit(distribution,
                             X, Y, p0 = p0)

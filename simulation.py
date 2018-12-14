@@ -13,6 +13,9 @@ NUMBER_OF_SUBFRAMES_PER_FRAME_KEY = 'number_of_subframes_per_frame'
 STEP_TIME_IN_SECONDS_KEY = 'step_time_in_seconds'
 SIGMA_X_NOISE_IN_UM = 'sigma_x_noise_in_um'
 SIGMA_Y_NOISE_IN_UM = 'sigma_y_noise_in_um'
+BACKGROUND_NOISE_SIGMA_KEY = 'background_noise_sigma'
+
+MOLECULES_KEY = 'molecules'
 
 from scipy.special import erf
 from numpy import sqrt
@@ -20,15 +23,18 @@ from matplotlib import pyplot as plt
 import numpy as np
 from tqdm import tqdm_notebook as tqdm
 from IPython import display
-from matplotlib.animation import FuncAnimation
+from matplotlib.animation import FuncAnimation, ArtistAnimation
+# from skimage.external import tifffile
+import tifffile
+import json
 
 class Simulation:
     def __init__(self, parameters):
         self.parameters =  parameters
         self.pixel_length_in_um = parameters[PIXEL_LENGTH_IN_UM_KEY]
         self.number_of_molecules = parameters[NUMBER_OF_MOLECULES_KEY]
-        self.screen_size = np.array([parameters[SCREEN_SIZE_IN_PIXELS_X_KEY],
-                            parameters[SCREEN_SIZE_IN_PIXELS_Y_KEY]])
+        self.screen_size = [parameters[SCREEN_SIZE_IN_PIXELS_X_KEY],
+                            parameters[SCREEN_SIZE_IN_PIXELS_Y_KEY]]
         self.z_direction_depth_in_um = parameters[Z_DIRECTION_DEPTH_IN_UM_KEY]
         self.diffusion_coefficient = parameters[DIFFUSION_COEFFICIENT_KEY]
         self.total_time_in_seconds = parameters[TOTAL_TIME_IN_SECONDS_KEY]
@@ -36,10 +42,14 @@ class Simulation:
         self.sigma_x_noise_in_um = parameters[SIGMA_X_NOISE_IN_UM]
         self.sigma_y_noise_in_um = parameters[SIGMA_Y_NOISE_IN_UM]
         self.number_of_subframes_per_frame = parameters[NUMBER_OF_SUBFRAMES_PER_FRAME_KEY]
+        self.background_noise_sigma = parameters[BACKGROUND_NOISE_SIGMA_KEY]
         
         self.number_of_steps = self.number_of_frames * self.number_of_subframes_per_frame
         self.step_time_in_seconds = self.total_time_in_seconds / self.number_of_steps 
         self.frame_time_in_seconds = self.total_time_in_seconds / self.number_of_frames
+
+        self.step_size = np.sqrt(2 * self.diffusion_coefficient * self.step_time_in_seconds)
+
         
         self.molecules = [Molecule(self.screen_size, 
                                    self.pixel_length_in_um,
@@ -49,6 +59,25 @@ class Simulation:
                                    self.number_of_steps) 
                           for _ in range(self.number_of_molecules)]
         self.did_run = False
+    def to_dict(self):
+        d = {
+            PIXEL_LENGTH_IN_UM_KEY : self.pixel_length_in_um,
+            NUMBER_OF_FRAMES_KEY : self.number_of_frames,
+            NUMBER_OF_SUBFRAMES_PER_FRAME_KEY : self.number_of_subframes_per_frame,
+            SCREEN_SIZE_IN_PIXELS_X_KEY : self.screen_size[0],
+            SCREEN_SIZE_IN_PIXELS_Y_KEY : self.screen_size[1],
+            SIGMA_X_NOISE_IN_UM : self.sigma_x_noise_in_um,
+            SIGMA_Y_NOISE_IN_UM : self.sigma_y_noise_in_um,
+            MOLECULES_KEY : [m.to_dict() for m in self.molecules]
+        }
+        return d
+
+    def to_json(self):
+        return json.dumps(self.to_dict(), indent = 4)
+
+    def write_to_file(self, filename):
+        with open(filename,"w") as f:
+            f.write(self.to_json())
 
     def _get_positions_in_frame(self,n):
         positions = []
@@ -90,15 +119,65 @@ class Simulation:
     def plot_frame(self, n, verbose = True):
         return plt.imshow(self._create_frame(n, verbose = verbose), cmap = 'Greys_r')
 
+    def _add_noise_to_frame(self, frame):
+        frame = np.array(frame)
+        return frame + \
+                    np.abs(np.random.normal(0, self.background_noise_sigma * np.sqrt(self.number_of_subframes_per_frame), self.screen_size))
+
+    def save_animation(self, filename):
+
+        from ctypes import c_char_p, c_int, cdll
+        lib = cdll.LoadLibrary("./Animation/animation.go.so")
+        lib.createAnimation.argtypes = [c_char_p]
+
+        temp_file ="/tmp/_temp_animation_file.json" 
+        with open(temp_file ,"w") as f:
+            f.write(self.to_json())
+        lib.createAnimation(temp_file.encode())
+
+        max_norm = np.sqrt(self.number_of_subframes_per_frame) * 5
+        converter = np.int16((2**15-1) / max_norm)
+
+        with tifffile.TiffWriter(filename, imagej = True) as stack:
+            for idx in tqdm(range(1, self.number_of_frames)):
+                with open("/tmp/{}.json".format(idx)) as f:
+                    frame = json.loads(f.read())
+                stack.save(np.array(self._add_noise_to_frame(frame) * converter,
+                                 dtype = np.int16))
+
     def get_animation(self):
+        from ctypes import c_char_p, c_int, cdll
+        lib = cdll.LoadLibrary("./Animation/animation.go.so")
+        lib.createAnimation.argtypes = [c_char_p]
+
+        temp_file ="/tmp/_temp_animation_file.json" 
+        with open(temp_file ,"w") as f:
+            f.write(self.to_json())
+        lib.createAnimation(temp_file.encode())
+
         fig = plt.figure()
 
-        im = plt.imshow(self._create_frame(0), 
-                        animated=True, 
-                        cmap = 'Greys_r')
+        max_norm = np.mean([self.sigma_y_noise_in_um, self.sigma_x_noise_in_um])/self.step_size 
+        norm =  plt.Normalize(0, max_norm * np.sqrt(self.number_of_subframes_per_frame))
 
-        def updatefig(index):
-            im.set_array(self._create_frame(index))
+        # with tifffile.TiffWriter(filename) as stack:
+        #     for idx in tqdm(range(1, self.number_of_frames)):
+        #         with open("/tmp/{}.json".format(idx)) as f:
+        #             frame = json.loads(f.read())
+        #         # im = plt.imshow(frame, animated = True, 
+        #         #                 cmap = 'Greys_r', norm = norm)
+        #         stack.save(np.array(frame, dtype = np.float64))
+
+
+        with open("/tmp/0.json") as f:
+            frame = json.loads(f.read())
+        im = plt.imshow(frame, animated = True, 
+                cmap = 'Greys_r', norm = norm)
+
+        def updatefig(idx):
+            with open("/tmp/{}.json".format(idx)) as f:
+                frame = json.loads(f.read())
+            im.set_array(self._add_noise_to_frame(frame))
             return im,
 
         ani = FuncAnimation(fig, updatefig,

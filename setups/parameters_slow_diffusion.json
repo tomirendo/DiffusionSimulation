@@ -1,8 +1,8 @@
 {   
-    "number_of_molecules": 50, 
+    "number_of_molecules": 500, 
     "total_time_in_seconds": 10, 
-    "number_of_frames": 2000, 
-    "number_of_subframes_per_frame" : 20,
+    "number_of_frames": 500, 
+    "number_of_subframes_per_frame" : 5,
 
 
     "pixel_length_in_um": 0.117, 
@@ -13,5 +13,6 @@
     "screen_size_in_pixels_y": 500,
 
     "sigma_x_noise_in_um" : 0.04,
-    "sigma_y_noise_in_um" : 0.04
+    "sigma_y_noise_in_um" : 0.04,
+    "background_noise_sigma" : 1
 }

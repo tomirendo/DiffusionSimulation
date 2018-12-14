@@ -1,6 +1,9 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
+POSITIONS_KEY = 'positions'
+START_FRAME_KEY = 'start_frame'
+
 class Molecule:
     def __init__(self, screen_size, 
                  pixel_length_in_um,
@@ -32,6 +35,13 @@ class Molecule:
         self.positions = [self.get_position()]
 
 
+    def to_dict(self):
+        d = {
+            START_FRAME_KEY : self.start_frame,
+            POSITIONS_KEY  : list(map(list,self.get_positions().T))
+        }
+        return d
+    
     def _is_in_frame(self):
         x,y,z = self.x, self.y, self.z
         screen_size_x, screen_size_y = self.screen_size_in_um
@@ -110,7 +120,6 @@ class Molecule:
         else :
             return [self._mean_square_displacement_for_n(n)  for 
                             n in N]
-
 
 
     def move(self, number_of_steps = 1, stop_when_out_of_frame = False):
