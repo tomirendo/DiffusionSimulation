@@ -27,6 +27,7 @@ from matplotlib.animation import FuncAnimation, ArtistAnimation
 # from skimage.external import tifffile
 import tifffile
 import json
+import os
 
 class Simulation:
     def __init__(self, parameters):
@@ -130,30 +131,35 @@ class Simulation:
         lib = cdll.LoadLibrary("./Animation/animation.go.so")
         lib.createAnimation.argtypes = [c_char_p]
 
-        temp_file ="/tmp/_temp_animation_file.json" 
+        temp_file ="_temp_animation_file.json" 
         with open(temp_file ,"w") as f:
             f.write(self.to_json())
         lib.createAnimation(temp_file.encode())
+        os.remove(temp_file)
 
         max_norm = np.sqrt(self.number_of_subframes_per_frame) * 5
         converter = np.int16((2**15-1) / max_norm)
 
         with tifffile.TiffWriter(filename, imagej = True) as stack:
             for idx in tqdm(range(1, self.number_of_frames)):
-                with open("/tmp/{}.json".format(idx)) as f:
+                image_filename = "{}.json".format(idx)
+                with open(image_filename) as f:
                     frame = json.loads(f.read())
+                os.remove(image_filename)
                 stack.save(np.array(self._add_noise_to_frame(frame) * converter,
                                  dtype = np.int16))
+
 
     def get_animation(self):
         from ctypes import c_char_p, c_int, cdll
         lib = cdll.LoadLibrary("./Animation/animation.go.so")
         lib.createAnimation.argtypes = [c_char_p]
 
-        temp_file ="/tmp/_temp_animation_file.json" 
+        temp_file ="_temp_animation_file.json" 
         with open(temp_file ,"w") as f:
             f.write(self.to_json())
         lib.createAnimation(temp_file.encode())
+        os.remove(temp_file)
 
         fig = plt.figure()
 
@@ -169,13 +175,14 @@ class Simulation:
         #         stack.save(np.array(frame, dtype = np.float64))
 
 
-        with open("/tmp/0.json") as f:
+        with open("0.json") as f:
             frame = json.loads(f.read())
         im = plt.imshow(frame, animated = True, 
                 cmap = 'Greys_r', norm = norm)
 
         def updatefig(idx):
-            with open("/tmp/{}.json".format(idx)) as f:
+            frame_filename ="{}.json".format(idx)
+            with open(frame_filename) as f:
                 frame = json.loads(f.read())
             im.set_array(self._add_noise_to_frame(frame))
             return im,
