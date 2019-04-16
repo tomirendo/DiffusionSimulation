@@ -57,14 +57,15 @@ func add_molecule_at_position_to_frame(position []float64, frame_index int){
     x0 := position[0]
     y0 := position[1]
 
-    five_sigmas_x := 5 * (math.Round(simulation.Sigma_x_noise_in_um/simulation.Pixel_length_in_um)+1)
-    five_sigmas_y := 5 * (math.Round(simulation.Sigma_y_noise_in_um/simulation.Pixel_length_in_um)+1)
 
-    min_x_pixel := math.Max(math.Round((x0)/simulation.Pixel_length_in_um)-five_sigmas_x, 0)
-    max_x_pixel := int(math.Min(math.Round((x0)/simulation.Pixel_length_in_um)+five_sigmas_x, float64(simulation.Screen_size_in_pixels_x)))
+    n_sigmas_x := 5 * (math.Round(simulation.Sigma_x_noise_in_um/simulation.Pixel_length_in_um)+1)
+    n_sigmas_y := 5 * (math.Round(simulation.Sigma_y_noise_in_um/simulation.Pixel_length_in_um)+1)
 
-    min_y_pixel := math.Max(math.Round((y0)/simulation.Pixel_length_in_um)-five_sigmas_y, 0)
-    max_y_pixel := int(math.Min(math.Round((y0)/simulation.Pixel_length_in_um)+five_sigmas_y, float64(simulation.Screen_size_in_pixels_y)))
+    min_x_pixel := math.Max(math.Round((x0)/simulation.Pixel_length_in_um)-n_sigmas_x, 0)
+    max_x_pixel := int(math.Min(math.Round((x0)/simulation.Pixel_length_in_um)+n_sigmas_x, float64(simulation.Screen_size_in_pixels_x)))
+
+    min_y_pixel := math.Max(math.Round((y0)/simulation.Pixel_length_in_um)-n_sigmas_y, 0)
+    max_y_pixel := int(math.Min(math.Round((y0)/simulation.Pixel_length_in_um)+n_sigmas_y, float64(simulation.Screen_size_in_pixels_y)))
 
 
     for i:=int(min_x_pixel); i < max_x_pixel; i++{

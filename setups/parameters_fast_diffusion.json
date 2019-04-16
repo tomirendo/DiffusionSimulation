@@ -1,13 +1,13 @@
 {   
-    "number_of_molecules": 50000,
-    "total_time_in_seconds": 1, 
-    "number_of_frames": 1000, 
+    "number_of_molecules": 500,
+    "total_time_in_seconds": 10, 
+    "number_of_frames": 100, 
     "number_of_subframes_per_frame" : 1,
 
 
     "pixel_length_in_um": 0.117, 
-    "z_direction_depth_in_um": 5, 
-    "diffusion_coefficient_in_um^2_over_seconds": 27,
+    "z_direction_depth_in_um": 0.5, 
+    "diffusion_coefficient_in_um^2_over_seconds": 2.7,
 
     "screen_size_in_pixels_x": 500, 
     "screen_size_in_pixels_y": 500,

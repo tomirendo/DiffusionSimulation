@@ -29,6 +29,17 @@ import tifffile
 import json
 import os
 
+def frame_filename(idx):
+    return "{}.json".format(idx)
+
+def maximum_value(index_range):
+    filenames = [frame_filename(idx) for idx in index_range]
+    maximum = 0 
+    for filename in filenames:
+        with open(filename) as f:
+            maximum = np.max([np.max(json.loads(f.read())), maximum])
+    return maximum
+
 class Simulation:
     def __init__(self, parameters):
         self.parameters =  parameters
@@ -125,7 +136,12 @@ class Simulation:
         return frame + \
                     np.abs(np.random.normal(0, self.background_noise_sigma * np.sqrt(self.number_of_subframes_per_frame), self.screen_size))
 
-    def save_animation(self, filename):
+    def save_animation(self, filename, verbose = False):
+        self.run()
+        if verbose:
+            _tqdm = tqdm
+        else :
+            _tqdm = lambda x:x
 
         from ctypes import c_char_p, c_int, cdll
         lib = cdll.LoadLibrary("./Animation/animation.go.so")
@@ -137,20 +153,23 @@ class Simulation:
         lib.createAnimation(temp_file.encode())
         os.remove(temp_file)
 
-        max_norm = np.sqrt(self.number_of_subframes_per_frame) * 5
-        converter = np.int16((2**15-1) / max_norm)
+        max_norm = maximum_value(range(self.number_of_frames))
+        MAX_INT16 = np.int16((2**15-1))
+        converter = np.int16(MAX_INT16 / max_norm)
+        constant = np.int16(0)
 
         with tifffile.TiffWriter(filename, imagej = True) as stack:
-            for idx in tqdm(range(1, self.number_of_frames)):
+            for idx in _tqdm(range(self.number_of_frames)):
                 image_filename = "{}.json".format(idx)
                 with open(image_filename) as f:
                     frame = json.loads(f.read())
                 os.remove(image_filename)
-                stack.save(np.array(self._add_noise_to_frame(frame) * converter,
+                stack.save(np.array(constant + self._add_noise_to_frame(frame) * converter,
                                  dtype = np.int16))
 
 
     def get_animation(self):
+        self.run()
         from ctypes import c_char_p, c_int, cdll
         lib = cdll.LoadLibrary("./Animation/animation.go.so")
         lib.createAnimation.argtypes = [c_char_p]
@@ -181,9 +200,10 @@ class Simulation:
                 cmap = 'Greys_r', norm = norm)
 
         def updatefig(idx):
-            frame_filename ="{}.json".format(idx)
+            frame_filename = frame_filename(idx)
             with open(frame_filename) as f:
                 frame = json.loads(f.read())
+            os.remove(image_filename)
             im.set_array(self._add_noise_to_frame(frame))
             return im,
 
