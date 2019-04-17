@@ -1,73 +1,71 @@
 import numpy as np
 from itertools import chain
+import json
 from matplotlib import pyplot as plt
 from scipy import optimize
+from simulation import MOLECULES_KEY,maximum_value,frame_filename
+import tifffile
+import json
+import os
 
-class TwoSpeciesSimulation:
+class MultiSpeciesSimulation:
     def __init__(self, *subsimulations):
         self.subsimulations = subsimulations
 
         self._check_simulations()
-        self.step_time_in_seconds = self.subsimulations[0].step_time_in_seconds
-
-        for simulation in self.subsimulations:
-            simulation.run()
+        self._random_simulation = self.subsimulations[0]
+        self.step_time_in_seconds = self._random_simulation.step_time_in_seconds
 
 
     def _check_simulations(self):
         if len(set([sim.step_time_in_seconds for sim in self.subsimulations])) != 1:
             raise Exception("All simulations need to have the same step_time_in_seconds")
 
-
-    def get_molecules_with_journey_length(self, n = 2,
-                                          return_as_simulation = False):
-        return [[m for m in simulation.molecules if m.get_length_of_journey() >= n]
-                 for simulation in self.subsimulations]
-
-    def get_distance_of_journies(self, length = 2):
-        if length < 2:
-            raise Exception("to plot distance of, Length must be > 2")
-        molecules = sum(self.get_molecules_with_journey_length(length), [])
-        return [m.get_distance_of_journey(length) for m in molecules]
-
-    def plot_distance_of_journies(self, length = 2, *args):
-        return plt.hist(self.get_distance_of_journies(), *args)
+    def run(self):
+        for simulation in self.subsimulations:
+            simulation.run()
 
 
-    def approxiamte_diffusion_coefficients(self, journey_length = 4,
-                                            bins = 200,
-                                            p0 = None):
-        number_of_steps = journey_length - 1    
-        if p0 is None:
-            p0 = [5,5,.5]
+    def to_dict(self):
+        subdicts = [s.to_dict() for s in self.subsimulations]
+        all_molecules = sum([d[MOLECULES_KEY] for d in subdicts],[])
+        total_dict = dict(subdicts[0])
+        total_dict[MOLECULES_KEY] = all_molecules
+        return total_dict
 
-        #at the moment, assumes 2 particle types
-        molecules_by_simulation = self.get_molecules_with_journey_length(n = journey_length)
-        displacements = [[_get_mean_square_displacement(molecule, number_of_steps) 
-                                for molecule in _sim]  for _sim in molecules_by_simulation]
+    def to_json(self):
+        return json.dumps(self.to_dict(), indent = 4)
 
 
-        histogram = np.histogram(list(chain.from_iterable(displacements)), 
-                                bins)
-        X, Y = histogram[1][:-1], histogram[0]
-        number_of_tracks = np.sum(Y)
-        delta = np.mean(np.diff(X))
+    def create_frames(self):
+        self.run()
 
-        def distribution(X, D1, D2, ratio):
-            DSTAR1 = 2 * self.step_time_in_seconds * D1
-            DSTAR2 = 2 * self.step_time_in_seconds * D2
-            return ratio/(1+ratio)*(number_of_tracks*delta)*1/(DSTAR1**number_of_steps) * (1/(np.math.factorial(number_of_steps-1) * 2**number_of_steps)) * (X**(number_of_steps-1) * np.exp(-X/(2*DSTAR1))) + \
-                       1/(ratio+1)*(number_of_tracks*delta)*1/(DSTAR2**number_of_steps) * (1/(np.math.factorial(number_of_steps-1) * 2**number_of_steps)) * (X**(number_of_steps-1) * np.exp(-X/(2*DSTAR2))) 
+        from ctypes import c_char_p, c_int, cdll
+        lib = cdll.LoadLibrary("./Animation/animation.go.so")
+        lib.createAnimation.argtypes = [c_char_p]
 
-        args, errors = optimize.curve_fit(distribution,
-                            X, Y, p0 = p0)
-        return args, [X, Y, distribution(X, *args)] 
+        temp_file ="_temp_animation_file.json" 
+        with open(temp_file ,"w") as f:
+            f.write(self.to_json())
+        lib.createAnimation(temp_file.encode())
+        os.remove(temp_file)
 
+    def save_frames_to_file(self, filename):
+        max_norm = maximum_value(range(self._random_simulation.number_of_frames))
+        MAX_INT16 = np.int16((2**15-1))
+        converter = np.int16(MAX_INT16 / max_norm)
+        constant = np.int16(0)
 
+        with tifffile.TiffWriter(filename, imagej = True) as stack:
+            for idx in (range(self._random_simulation.number_of_frames)):
+                image_filename = "{}.json".format(idx)
+                with open(image_filename) as f:
+                    frame = json.loads(f.read())
+                os.remove(image_filename)
+                stack.save(np.array(constant + self._random_simulation._add_noise_to_frame(frame) * converter,
+                                 dtype = np.int16))
 
-
-
-def _get_mean_square_displacement(molecule, n = 3):
-    dist_vect = molecule._square_displacement_vector(1)
-    return (np.sum(dist_vect[range(n)]))
+    def save_animation(self, filename):
+        self.create_frames()
+        self.save_frames_to_file(filename)
         
