@@ -7,14 +7,14 @@ from PyQt5.QtWidgets import (QWidget, QLabel, QLineEdit, QTableView, QTableWidge
 # from PyQt5.QtGui import QAbstractTableModel
 from PyQt5.QtCore import Qt, pyqtSlot, QAbstractTableModel
 from PyQt5 import QtCore
-from simulation import Simulation
+from simulation import Simulation, NUMBER_OF_FRAMES_KEY, MOLECULES_KEY
 from multispecies_simulation import MultiSpeciesSimulation
 
 MOLECULES_DICTIONARY_KEY = 'molecules'
 
 COLUMN_CHAR_WIDTH = 7
 
-WINDOW_WIDTH = 700
+WINDOW_WIDTH = 770
 WINDOW_HEIGHT = 600
 
 ORIGINAL_POSITION_X = 100
@@ -26,7 +26,7 @@ STATUS_LABEL_INITAL_VALUE = 'Click `Create Simulation` to begin'
 treads = []
 default_values = {   
     "total_time_in_seconds": 10, 
-    "number_of_frames": 250, 
+    "exposure_time_in_ms": 40, 
     "number_of_subframes_per_frame" : 100,
 
 
@@ -36,14 +36,15 @@ default_values = {
     "screen_size_in_pixels_x": 400, 
     "screen_size_in_pixels_y": 400,
 
-    "sigma_x_noise_in_um" : 0.04,
-    "sigma_y_noise_in_um" : 0.04,
-    "background_noise_sigma" : 0.1
+    "psf_sigma_in_um_x_axis" : 0.04,
+    "psf_sigma_in_um_y_axis" : 0.04,
+    "background_noise_amplitude" : 30
 }
 
 molecule_default_values = {
     "number_of_molecules": 5000, 
     "diffusion_coefficient_in_um^2_over_seconds": 0.5,
+    "intensity" : 100,
 }
 
 class MoleculeTableModel():
@@ -221,7 +222,7 @@ class Example(QWidget):
             self.progress_bar.setValue(self.progress_bar.value() + 1)
             self.set_status_label("Saving to file")
             multispecies_simulation.save_frames_to_file(filename)
-            self.save_setup(setup_dictionary, molecules_dictionaries, filename)
+            self.save_setup(setup_dictionary, molecules_dictionaries, simulations, filename)
 
             self.progress_bar.setValue(self.progress_bar.value() + 1)
             self.set_status_label("Done!")
@@ -261,16 +262,20 @@ class Example(QWidget):
             except Exception as e:
                 self.show_error("Problem parsing {}, \n {}".format(key, str(e)))
                 return
+                
         return setup_dictionary
 
-    def create_simulation_dictionary(self, setup_dictionary, molecules_dictionaries):
+    def create_simulation_dictionary(self, setup_dictionary, molecules_dictionaries, simulations):
         d = dict(setup_dictionary)
+        molecules_dictionaries = list([dict(d) for d in molecules_dictionaries])
+        for molecule_dict, simulation in zip(molecules_dictionaries, simulations):
+            molecule_dict[MOLECULES_KEY] = simulation.to_dict()[MOLECULES_KEY]
         d[MOLECULES_DICTIONARY_KEY] = molecules_dictionaries
         return d
 
-    def save_setup(self, setup_dictionary, molecules_dictionaries, filename):
+    def save_setup(self, setup_dictionary, molecules_dictionaries, simulations, filename):
         with open(filename + ".json", "w") as f:
-            f.write(json.dumps(setup_dictionary))
+            f.write(json.dumps(self.create_simulation_dictionary(setup_dictionary, molecules_dictionaries, simulations)))
 
 
 

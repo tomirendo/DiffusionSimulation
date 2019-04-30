@@ -9,11 +9,14 @@ DIFFUSION_COEFFICIENT_KEY = 'diffusion_coefficient_in_um^2_over_seconds'
 TOTAL_TIME_IN_SECONDS_KEY = 'total_time_in_seconds'
 Z_DIRECTION_DEPTH_IN_UM_KEY = 'z_direction_depth_in_um'
 NUMBER_OF_FRAMES_KEY = 'number_of_frames'
+EXPOSURE_TIME_IN_MS_KEY = 'exposure_time_in_ms'
 NUMBER_OF_SUBFRAMES_PER_FRAME_KEY = 'number_of_subframes_per_frame'
 STEP_TIME_IN_SECONDS_KEY = 'step_time_in_seconds'
-SIGMA_X_NOISE_IN_UM = 'sigma_x_noise_in_um'
-SIGMA_Y_NOISE_IN_UM = 'sigma_y_noise_in_um'
-BACKGROUND_NOISE_SIGMA_KEY = 'background_noise_sigma'
+PSF_SIGMA_IN_UM_X_AXIS  = 'psf_sigma_in_um_x_axis'
+PSF_SIGMA_IN_UM_Y_AXIS  = 'psf_sigma_in_um_y_axis'
+BACKGROUND_NOISE_AMPLITUDE_KEY = 'background_noise_amplitude'
+INTENSITY_KEY = 'intensity'
+SECONDS_IN_MS = 1e-3
 
 MOLECULES_KEY = 'molecules'
 
@@ -44,6 +47,7 @@ def maximum_value(index_range):
 class Simulation:
     def __init__(self, parameters):
         self.parameters =  parameters
+        self.intensity = parameters[INTENSITY_KEY]
         self.pixel_length_in_um = parameters[PIXEL_LENGTH_IN_UM_KEY]
         self.number_of_molecules = parameters[NUMBER_OF_MOLECULES_KEY]
         self.screen_size = [parameters[SCREEN_SIZE_IN_PIXELS_X_KEY],
@@ -51,11 +55,12 @@ class Simulation:
         self.z_direction_depth_in_um = parameters[Z_DIRECTION_DEPTH_IN_UM_KEY]
         self.diffusion_coefficient = parameters[DIFFUSION_COEFFICIENT_KEY]
         self.total_time_in_seconds = parameters[TOTAL_TIME_IN_SECONDS_KEY]
-        self.number_of_frames = parameters[NUMBER_OF_FRAMES_KEY]
-        self.sigma_x_noise_in_um = parameters[SIGMA_X_NOISE_IN_UM]
-        self.sigma_y_noise_in_um = parameters[SIGMA_Y_NOISE_IN_UM]
+        self.exposure_time_in_seconds = parameters[EXPOSURE_TIME_IN_MS_KEY] * SECONDS_IN_MS
+        self.number_of_frames = int(round(self.total_time_in_seconds / self.exposure_time_in_seconds)) #parameters[NUMBER_OF_FRAMES_KEY]
+        self.sigma_x_noise_in_um = parameters[PSF_SIGMA_IN_UM_X_AXIS]
+        self.sigma_y_noise_in_um = parameters[PSF_SIGMA_IN_UM_Y_AXIS]
         self.number_of_subframes_per_frame = parameters[NUMBER_OF_SUBFRAMES_PER_FRAME_KEY]
-        self.background_noise_sigma = parameters[BACKGROUND_NOISE_SIGMA_KEY]
+        self.background_noise_amplitude = parameters[BACKGROUND_NOISE_AMPLITUDE_KEY]
         
         self.number_of_steps = self.number_of_frames * self.number_of_subframes_per_frame
         self.step_time_in_seconds = self.total_time_in_seconds / self.number_of_steps 
@@ -69,18 +74,20 @@ class Simulation:
                                    self.z_direction_depth_in_um,
                                    self.diffusion_coefficient,
                                    self.step_time_in_seconds,
-                                   self.number_of_steps) 
+                                   self.number_of_steps,
+                                   self.intensity) 
                           for _ in range(self.number_of_molecules)]
         self.did_run = False
     def to_dict(self):
         d = {
             PIXEL_LENGTH_IN_UM_KEY : self.pixel_length_in_um,
             NUMBER_OF_FRAMES_KEY : self.number_of_frames,
+            BACKGROUND_NOISE_AMPLITUDE_KEY : self.background_noise_amplitude,
             NUMBER_OF_SUBFRAMES_PER_FRAME_KEY : self.number_of_subframes_per_frame,
             SCREEN_SIZE_IN_PIXELS_X_KEY : self.screen_size[0],
             SCREEN_SIZE_IN_PIXELS_Y_KEY : self.screen_size[1],
-            SIGMA_X_NOISE_IN_UM : self.sigma_x_noise_in_um,
-            SIGMA_Y_NOISE_IN_UM : self.sigma_y_noise_in_um,
+            PSF_SIGMA_IN_UM_X_AXIS : self.sigma_x_noise_in_um,
+            PSF_SIGMA_IN_UM_Y_AXIS : self.sigma_y_noise_in_um,
             MOLECULES_KEY : [m.to_dict() for m in self.molecules]
         }
         return d
@@ -134,8 +141,8 @@ class Simulation:
 
     def _add_noise_to_frame(self, frame):
         frame = np.array(frame)
-        return frame + \
-                    np.abs(np.random.normal(0, self.background_noise_sigma * np.sqrt(self.number_of_subframes_per_frame), self.screen_size))
+        return frame + np.random.exponential(self.background_noise_amplitude, self.screen_size)
+                    # np.abs(np.random.normal(0, self.background_noise_sigma * np.sqrt(self.number_of_subframes_per_frame), self.screen_size))
 
     def save_animation(self, filename, verbose = False):
         self.run()

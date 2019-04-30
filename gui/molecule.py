@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 
 POSITIONS_KEY = 'positions'
 START_FRAME_KEY = 'start_frame'
+INTENSITY_KEY = 'intensity'
 
 class Molecule:
     def __init__(self, screen_size, 
@@ -10,9 +11,11 @@ class Molecule:
                  screen_depth_in_um,
                  diffusion_coefficient,
                  step_time_in_seconds,
-                 number_of_frames):
+                 number_of_frames,
+                 intensity):
         
         #Save variables
+        self.intensity = intensity
         self.screen_size = screen_size
         self.pixel_length_in_um = pixel_length_in_um
         self.screen_depth_in_um = screen_depth_in_um
@@ -38,7 +41,8 @@ class Molecule:
     def to_dict(self):
         d = {
             START_FRAME_KEY : self.start_frame,
-            POSITIONS_KEY  : list(map(list,self.get_positions().T))
+            POSITIONS_KEY  : list(map(list,self.get_positions().T)),
+            INTENSITY_KEY : self.intensity,
         }
         return d
     

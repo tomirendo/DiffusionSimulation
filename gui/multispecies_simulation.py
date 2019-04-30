@@ -51,9 +51,10 @@ class MultiSpeciesSimulation:
         os.remove(temp_file)
 
     def save_frames_to_file(self, filename):
-        max_norm = maximum_value(range(self._random_simulation.number_of_frames))
-        MAX_INT16 = np.int16((2**15-1))
-        converter = np.int16(MAX_INT16 / max_norm)
+        # max_norm = maximum_value(range(self._random_simulation.number_of_frames))
+        # MAX_INT16 = np.int16((2**15-1))
+        # converter = np.int16(MAX_INT16 / max_norm)
+        converter = np.int16(1)
         constant = np.int16(0)
 
         with tifffile.TiffWriter(filename, imagej = True) as stack:

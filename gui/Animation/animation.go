@@ -13,6 +13,7 @@ import "C"
 type Molecule struct{
     Start_frame int
     Positions [][]float64
+    Intensity float64
 }
 
 type Simulation struct{
@@ -20,11 +21,13 @@ type Simulation struct{
     Number_of_subframes_per_frame int 
 
     Pixel_length_in_um float64
-    Sigma_x_noise_in_um float64 
-    Sigma_y_noise_in_um float64
+    Psf_sigma_in_um_x_axis float64 
+    Psf_sigma_in_um_y_axis float64
 
     Screen_size_in_pixels_x int
     Screen_size_in_pixels_y int
+    
+    Background_noise_amplitude float64
 
     Molecules []Molecule 
 }
@@ -43,23 +46,23 @@ var Frames [][][]float64
 var simulation Simulation
 
 
-func PSF(position []float64, x float64, y float64, sigma_x float64, sigma_y float64) float64{
+func PSF(position []float64, x float64, y float64, sigma_x float64, sigma_y float64, intensity float64) float64{
     x0 := position[0]
     y0 := position[1]
     // return 1/(2*math.Pi*sigma_x*sigma_y)*math.Exp(- math.Pow((x-x0),2)/(2*math.Pow(sigma_x,2)))*math.Exp(-math.Pow((y-y0),2)/(2*math.Pow(sigma_y,2)))
 
     // Max Value of 1 (not normalized)
-    return math.Exp(- math.Pow((x-x0),2)/(2*math.Pow(sigma_x,2)))*math.Exp(-math.Pow((y-y0),2)/(2*math.Pow(sigma_y,2)))
+    return intensity * math.Exp(- math.Pow((x-x0),2)/(2*math.Pow(sigma_x,2)))*math.Exp(-math.Pow((y-y0),2)/(2*math.Pow(sigma_y,2)))
 }
 
-func add_molecule_at_position_to_frame(position []float64, frame_index int){
+func add_molecule_at_position_to_frame(position []float64, intensity float64, frame_index int){
 
     x0 := position[0]
     y0 := position[1]
 
 
-    n_sigmas_x := 5 * (math.Round(simulation.Sigma_x_noise_in_um/simulation.Pixel_length_in_um)+1)
-    n_sigmas_y := 5 * (math.Round(simulation.Sigma_y_noise_in_um/simulation.Pixel_length_in_um)+1)
+    n_sigmas_x := 5 * (math.Round(simulation.Psf_sigma_in_um_x_axis/simulation.Pixel_length_in_um)+1)
+    n_sigmas_y := 5 * (math.Round(simulation.Psf_sigma_in_um_y_axis/simulation.Pixel_length_in_um)+1)
 
     min_x_pixel := math.Max(math.Round((x0)/simulation.Pixel_length_in_um)-n_sigmas_x, 0)
     max_x_pixel := int(math.Min(math.Round((x0)/simulation.Pixel_length_in_um)+n_sigmas_x, float64(simulation.Screen_size_in_pixels_x)))
@@ -72,7 +75,7 @@ func add_molecule_at_position_to_frame(position []float64, frame_index int){
         for j:=int(min_y_pixel); j< max_y_pixel;j++{
             x := float64(i) * simulation.Pixel_length_in_um
             y := float64(j) * simulation.Pixel_length_in_um
-            Frames[frame_index][i][j] += PSF(position, x, y, simulation.Sigma_x_noise_in_um, simulation.Sigma_y_noise_in_um)
+            Frames[frame_index][i][j] += PSF(position, x, y, simulation.Psf_sigma_in_um_x_axis, simulation.Psf_sigma_in_um_y_axis, intensity)
 
         } 
     }
@@ -84,7 +87,7 @@ func create_frame(frame_index int, wg *sync.WaitGroup){
             subframe_index := frame_index*simulation.Number_of_subframes_per_frame + subframe
             position := get_position_in_frame(molecule,subframe_index) 
             if position != nil{
-                add_molecule_at_position_to_frame(position, frame_index)
+                add_molecule_at_position_to_frame(position, molecule.Intensity, frame_index)
             }
         }
     }
