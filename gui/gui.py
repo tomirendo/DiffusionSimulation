@@ -25,8 +25,8 @@ STATUS_LABEL_INITAL_VALUE = 'Click `Create Simulation` to begin'
 
 treads = []
 default_values = {   
-    "total_time_in_seconds": 10, 
-    "exposure_time_in_ms": 40, 
+    "total_time_in_seconds": 10.0, 
+    "exposure_time_in_ms": 40.0, 
     "number_of_subframes_per_frame" : 100,
 
 
@@ -177,7 +177,6 @@ class Example(QWidget):
 
     @pyqtSlot()
     def run_button_clicked(self):
-        self.set_enable_status(False)
         self.molecules_table_model.update_data()
 
         molecules_dictionaries = self.molecules_table_model.get_molecules(self)
@@ -201,6 +200,7 @@ class Example(QWidget):
             return 
 
         self.init_progress_bar(len(molecules_dictionaries))
+        self.set_enable_status(False)
 
         def worker():
             self.set_status_label("Running Simulations")

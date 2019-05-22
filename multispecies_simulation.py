@@ -18,6 +18,11 @@ class TwoSpeciesSimulation:
         if len(set([sim.step_time_in_seconds for sim in self.subsimulations])) != 1:
             raise Exception("All simulations need to have the same step_time_in_seconds")
 
+    def get_msds(self, number_of_steps):
+        #at the moment, assumes 2 particle types
+        molecules_by_simulation = self.get_molecules_with_journey_length(n = number_of_steps + 1)
+        return np.array(list(chain(*[[_get_mean_square_displacement(molecule, number_of_steps) 
+                                for molecule in _sim]  for _sim in molecules_by_simulation])))
 
     def get_molecules_with_journey_length(self, n = 2,
                                           return_as_simulation = False):
@@ -36,7 +41,8 @@ class TwoSpeciesSimulation:
 
     def approxiamte_diffusion_coefficients(self, journey_length = 4,
                                             bins = 200,
-                                            p0 = None):
+                                            p0 = None,
+                                            bounds = None):
         number_of_steps = journey_length - 1    
         if p0 is None:
             p0 = [5,5,.5]
@@ -59,8 +65,14 @@ class TwoSpeciesSimulation:
             return ratio/(1+ratio)*(number_of_tracks*delta)*1/(DSTAR1**number_of_steps) * (1/(np.math.factorial(number_of_steps-1) * 2**number_of_steps)) * (X**(number_of_steps-1) * np.exp(-X/(2*DSTAR1))) + \
                        1/(ratio+1)*(number_of_tracks*delta)*1/(DSTAR2**number_of_steps) * (1/(np.math.factorial(number_of_steps-1) * 2**number_of_steps)) * (X**(number_of_steps-1) * np.exp(-X/(2*DSTAR2))) 
 
-        args, errors = optimize.curve_fit(distribution,
+        if bounds :
+            args, errors = optimize.curve_fit(distribution,
+                            X, Y, p0 = p0,
+                            bounds = bounds)
+        else :
+            args, errors = optimize.curve_fit(distribution,
                             X, Y, p0 = p0)
+            
         return args, [X, Y, distribution(X, *args)] 
 
 
