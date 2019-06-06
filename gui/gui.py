@@ -224,7 +224,8 @@ class Example(QWidget):
             multispecies_simulation.save_frames_to_file(filename)
             self.save_setup(setup_dictionary, molecules_dictionaries, simulations, filename)
 
-            self.progress_bar.setValue(self.progress_bar.value() + 1)
+            # self.progress_bar.setValue(self.progress_bar.value() + 1)
+            self.finish_progress_bar()
             self.set_status_label("Done!")
             self.set_enable_status(True)
 
@@ -249,6 +250,12 @@ class Example(QWidget):
         self.progress_bar.setValue(0)
         self.progress_bar.setMinimum(0) 
         self.progress_bar.setMaximum(number_of_molecules + NUMBER_OF_ANIMATION_STEPS)
+
+    def finish_progress_bar(self):
+        self.progress_bar.setMinimum(0)
+        self.progress_bar.setMaximum(1)
+        self.progress_bar.setValue(1)
+
 
     def set_status_label(self, text):
         self.status_label.setText(text)

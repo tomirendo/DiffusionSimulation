@@ -41,7 +41,8 @@ class MultiSpeciesSimulation:
         self.run()
 
         from ctypes import c_char_p, c_int, cdll
-        lib = cdll.LoadLibrary("./Animation/animation.go.so")
+        lib = cdll.LoadLibrary("./Animation/animation.go.dll")
+        # lib = cdll.LoadLibrary("./Animation/animation.go.so")
         lib.createAnimation.argtypes = [c_char_p]
 
         temp_file ="_temp_animation_file.json" 
