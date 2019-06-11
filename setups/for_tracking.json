@@ -1,0 +1,18 @@
+{   
+    "number_of_molecules": 10000, 
+    "total_time_in_seconds": 10, 
+    "number_of_frames": 500, 
+    "number_of_subframes_per_frame" : 100,
+
+
+    "pixel_length_in_um": 0.117, 
+    "z_direction_depth_in_um": 0.5, 
+    "diffusion_coefficient_in_um^2_over_seconds": 0.80,
+
+    "screen_size_in_pixels_x": 400, 
+    "screen_size_in_pixels_y": 400,
+
+    "sigma_x_noise_in_um" : 0.04,
+    "sigma_y_noise_in_um" : 0.04,
+    "background_noise_sigma" : 0.1
+}
